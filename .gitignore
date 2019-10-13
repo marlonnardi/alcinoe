@@ -1,11 +1,11 @@
 # Delphi compiler-generated binaries (safe to delete)
-#*.exe
-#*.dll
-#*.bpl
-#*.bpi
-#*.dcp
+*.exe
+*.dll
+*.bpl
+*.bpi
+*.dcp
 *.so
-#*.apk
+*.apk
 *.drc
 *.map
 *.dres
