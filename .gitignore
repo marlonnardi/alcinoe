@@ -59,3 +59,4 @@ __recovery/
 /demos/ALLiveVideoChat/client/_source/ios/frameworks/WebRTC.framework/Info.plist
 /demos/ALLiveVideoChat/client/_source/ios/frameworks/WebRTC.framework/LICENSE.md
 /demos/ALLiveVideoChat/client/_source/ios/frameworks/WebRTC.framework/WebRTC
+*.hpp
