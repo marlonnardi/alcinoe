@@ -7,9 +7,6 @@
 /demos/ALLiveVideoChat/client/_source/ios/frameworks/WebRTC.framework/Info.plist
 /demos/ALLiveVideoChat/client/_source/ios/frameworks/WebRTC.framework/LICENSE.md
 /demos/ALLiveVideoChat/client/_source/ios/frameworks/WebRTC.framework/WebRTC
-<<<<<<< HEAD
-*.hpp
-=======
 *.rsm 
 *.dcu 
 *.identcache 
@@ -20,8 +17,5 @@
 /references/embarcadero/rio/10_3_3/originals/rtl
 references/embarcadero/rio/10_3_2/patched/fmx/__history/
 source/__history/
->>>>>>> master
-*.bpi
 *.bpl
-*.dcp
-*.lib
+demos/ALFacebookLogin/Android/Debug/
