@@ -223,7 +223,6 @@ mkdir source\output 2> nul
  -Xlint:unchecked^
  -Xlint:deprecation^
  -cp %ANDROID_PLATFORM%\android.jar;%FMX_JAR%;^
-lib\jar\me.leolin\shortcutbadger.jar;^
 lib\jar\com.android.support\support-core-utils.jar;^
 lib\jar\com.android.support\support-compat.jar;^
 lib\jar\com.android.support\support-annotations.jar;^
@@ -326,7 +325,8 @@ if x%CONFIRM% == xon PAUSE
 goto EXIT
 
 :ERROR
-pause
+PAUSE
+EXIT 1 & REM without /B to Close CMD.exe in case this batch is a subroutine and the caller forget to catch the ERRORLEVEL
 
 :EXIT
 
