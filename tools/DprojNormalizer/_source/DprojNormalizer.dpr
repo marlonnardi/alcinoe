@@ -65,6 +65,27 @@ Begin
         aNode.ChildNodes.Delete(i);
 End;
 
+{***************************************************}
+Procedure _RemoveCDataNodes(const aNode: TalXmlNode);
+var LValue: AnsiString;
+    LParentNode: TalXmlNode;
+    i: integer;
+Begin
+  if ANode = nil then exit;
+  if aNode.NodeType = ntCData then begin
+    LValue := aNode.Text;
+    LParentNode := ANode.ParentNode;
+    if LParentNode.ChildNodes.Count <> 1 then
+      raise Exception.Create('Error 2F418A94-9F42-4418-90D7-ED8EC120D1B0');
+    LParentNode.ChildNodes.Clear;
+    LPArentNode.Text := LValue;
+  end;
+  //-----
+  if aNode.ChildNodes <> nil then
+    for i := 0 to aNode.ChildNodes.Count - 1 do
+      _RemoveCDataNodes(aNode.ChildNodes[i]);
+End;
+
 var
   LDProjFilename: AnsiString;
   LCreateBackup: Boolean;
@@ -87,6 +108,12 @@ var
 begin
 
   try
+
+    //Init project params 
+    {$IFDEF DEBUG}
+    ReportMemoryleaksOnSHutdown := True;
+    {$ENDIF}
+    SetMultiByteConversionCodePage(CP_UTF8);
 
     //init LDProjFilename / LCreateBackup
     LDProjFilename := ALTrim(ansiString(paramstr(1)));
@@ -169,8 +196,9 @@ begin
                 (not ALSameText(LEnabledNode.Text,'false'))) then                 // enabled, but i consider we can only update enabled
               LDeploymentNode.ChildNodes.Delete(i);
           end
-          else if (ALSameText(LDeployFileNode.NodeName, 'DeployClass')) then  // this DeployClass seam not correctly updated
-            LDeploymentNode.ChildNodes.Delete(i);                             // so I prefer to delete them (don't know what could be the consequence)
+          else if (ALSameText(LDeployFileNode.NodeName, 'DeployClass')) or    // this DeployClass seam not correctly updated
+                  (ALSameText(LDeployFileNode.NodeName, 'ProjectRoot')) then  // so I prefer to delete them (don't know what could be the consequence)
+            LDeploymentNode.ChildNodes.Delete(i);                             // and ProjectRoot seam also to be useless
         end;
 
       //put ProjectRoot at the end (don't know if it's matter)
@@ -190,6 +218,9 @@ begin
 
       //Remove Empty ProjectExtensions Node
       _RemoveEmptyProjectExtensionsNode(LXmlDoc.DocumentElement);
+
+      //remove CData nodes
+      _RemoveCDataNodes(LXmlDoc.DocumentElement);
 
       //save the file to LXmlStr
       LXmlDoc.SaveToXML(LXmlStr);
