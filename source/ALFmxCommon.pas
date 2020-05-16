@@ -3239,7 +3239,7 @@ end;
 
 {*********************}
 {$ZEROBASEDSTRINGS OFF} // << the guy who introduce zero base string in delphi is just a mix of a Monkey and a Donkey !
-function  ALDrawMultiLineText(const aText: String; // support only theses EXACT html tag :
+function  ALDrawMultiLineText(const aText: String; // support only those html tags :
                                                    //   <b>...</b>
                                                    //   <i>...</i>
                                                    //   <font color="#xxxxxx">...</font>
@@ -3467,7 +3467,8 @@ begin
                           //                                 ^P1
 
             //-----
-            if alposU('<b', aTag) = 1 then begin
+            if (alposU('<b ', aTag) = 1) or
+               (aTag = '<b>') then begin
               _getInfosFromTag(AlcopyStrU(aTag, 4, length(aTag) - 4), aSpanIds, aFontColors);
               inc(aBold);
             end
@@ -3478,13 +3479,15 @@ begin
             end
 
             //-----
-            else if alposU('<img', aTag) = 1 then begin // <img src="xxx">
+            else if (alposU('<img ', aTag) = 1) or
+                    (aTag = '<img/>') then begin // <img src="xxx">
               _getInfosFromImg(AlcopyStrU(aTag, 6, length(aTag) - 6), aCurrImgSrc);
               aCurrText := '⬛';
             end
 
             //-----
-            else if (alposU('<i', aTag) = 1) then begin
+            else if (alposU('<i ', aTag) = 1) or
+                    (aTag = '<i>') then begin
               _getInfosFromTag(AlcopyStrU(aTag, 4, length(aTag) - 4), aSpanIds, aFontColors);
               inc(aItalic)
             end
@@ -3495,7 +3498,8 @@ begin
             end
 
             //-----
-            else if alposU('<font', aTag) = 1 then begin   // <font color="#ffffff">
+            else if (alposU('<font ', aTag) = 1) or
+                    (aTag = '<font>')  then begin   // <font color="#ffffff">
               _getInfosFromTag(AlcopyStrU(aTag, 7, length(aTag) - 7), aSpanIds, aFontColors);
             end
             else if aTag = '</font>' then begin
@@ -3504,7 +3508,8 @@ begin
             end
 
             //-----
-            else if alposU('<span', aTag) = 1 then begin // <span id="xxx">
+            else if (alposU('<span ', aTag) = 1) or
+                    (aTag = '<span>') then begin // <span id="xxx">
               _getInfosFromTag(AlcopyStrU(aTag, 7, length(aTag) - 7), aSpanIds, aFontColors);
             end
             else if aTag = '</span>' then begin
@@ -3916,6 +3921,10 @@ begin
             aImg := ALLoadFitIntoResourceImageV2(aBreakedTextItem.imgSrc, aTmpRect.Width, aTmpRect.Height);
             if aImg <> nil then begin
               try
+                aPaint.setColor(integer(aBreakedTextItem.fontColor)); // sean that the bitmap is paint with the alpha value set via setColor
+                                                                      // ideally I would prefer to draw bitmap with alpha = 1 but drawText
+                                                                      // don't draw emoji with alpha 1 (that is not the case under iOS) and we
+                                                                      // we need do work the same way as aCanvas.drawText work :(
                 aCanvas.drawBitmap(aImg, aTmpRect.left {left}, aTmpRect.top {top}, apaint {paint});
               finally
                 aImg.recycle;
@@ -3988,6 +3997,7 @@ begin
             aImg := ALLoadFitIntoResourceImageV2(aBreakedTextItem.imgSrc, aTmpRect.Width, aTmpRect.Height);
             if aImg <> nil then begin
               Try
+                CGContextSetAlpha(aContext, TAlphaColorF.create(aBreakedTextItem.fontColor).A); // to work the same way as with android
                 CGContextDrawImage(aContext, // c: The graphics context in which to draw the image.
                                    ALLowerLeftCGRect(TPointF.Create(aTmpRect.left, aTmpRect.top),
                                                      aTmpRect.Width,
@@ -4000,6 +4010,7 @@ begin
             end;
           end
           else begin
+            CGContextSetAlpha(aContext, 1);
             CGContextSetTextPosition(acontext,
                                      aBreakedTextItem.pos.x {x},
                                      aBitmapSurface.Height - aBreakedTextItem.pos.Y);{y}
@@ -4057,7 +4068,12 @@ begin
               aImg := ALLoadFitIntoResourceImageV2(aBreakedTextItem.imgSrc, aTmpRect.Width, aTmpRect.Height);
               if aImg <> nil then begin
                 try
-                  result.Canvas.drawBitmap(aImg, TrectF.Create(0,0,aTmpRect.Width,aTmpRect.Height), aTmpRect{DstRect}, 1{AOpacity}, false{HighSpeed});
+                  result.Canvas.drawBitmap(
+                                  aImg,
+                                  TrectF.Create(0,0,aTmpRect.Width,aTmpRect.Height),
+                                  aTmpRect{DstRect},
+                                  TAlphaColorF.create(aBreakedTextItem.fontColor).A{AOpacity}, // to work the same way as with android
+                                  false{HighSpeed});
                 finally
                   ALFreeAndNil(aImg);
                 end;
@@ -4799,7 +4815,8 @@ const aDefaultInputRange: array[0..1] of CGFloat = (0, 1);
 {$IF defined(ANDROID)}
 var aRect: TrectF;
     aTmpBitmap: Jbitmap;
-    aShader: JRadialGradient;
+    aRadialShader: JRadialGradient;
+    aLinearShader: JLinearGradient;
     aPaint: JPaint;
     aColors: TJavaArray<Integer>;
     aStops: TJavaArray<Single>;
@@ -4862,11 +4879,39 @@ begin
           aColors[Fill.Gradient.Points.Count - 1 - i] := integer(Fill.Gradient.Points[i].Color);
           aStops[Fill.Gradient.Points.Count - 1 - i] := 1 - Fill.Gradient.Points[i].Offset;
         end;
-        aShader := TJRadialGradient.JavaClass.init(aRect.CenterPoint.x{x}, aRect.CenterPoint.y{y}, aRect.width / 2{radius},  aColors, aStops, TJShader_TileMode.JavaClass.CLAMP{tile});
-        aPaint.setShader(aShader);
+        aRadialShader := TJRadialGradient.JavaClass.init(
+                           aRect.CenterPoint.x{x},
+                           aRect.CenterPoint.y{y},
+                           aRect.width / 2{radius},
+                           aColors,
+                           aStops,
+                           TJShader_TileMode.JavaClass.CLAMP{tile});
+        aPaint.setShader(aRadialShader);
         _drawRect(aCanvas, aPaint, aRect, false{aDrawOnlyBorder});
         aPaint.setShader(nil);
-        aShader := nil;
+        aRadialShader := nil;
+        ALfreeandNil(aColors);
+        ALfreeandNil(aStops);
+      end
+      else if Fill.Gradient.Style = TGradientStyle.Linear then begin
+        aColors := TJavaArray<Integer>.Create(Fill.Gradient.Points.Count);
+        aStops := TJavaArray<Single>.Create(Fill.Gradient.Points.Count);
+        for i := 0 to Fill.Gradient.Points.Count - 1 do begin
+          aColors[i] := integer(Fill.Gradient.Points[i].Color);
+          aStops[i] := Fill.Gradient.Points[i].Offset;
+        end;
+        aLinearShader := TJLinearGradient.JavaClass.init(
+                           aRect.TopLeft.x + (Fill.Gradient.StartPosition.X * aRect.Width){x0},
+                           aRect.TopLeft.y + (Fill.Gradient.StartPosition.Y * aRect.Height){y0},
+                           aRect.BottomRight.x + (Fill.Gradient.StopPosition.X * aRect.Width){x1},
+                           aRect.BottomRight.y + (Fill.Gradient.StopPosition.Y * aRect.Height){y1},
+                           aColors,
+                           aStops,
+                           TJShader_TileMode.JavaClass.CLAMP{tile});
+        aPaint.setShader(aLinearShader);
+        _drawRect(aCanvas, aPaint, aRect, false{aDrawOnlyBorder});
+        aPaint.setShader(nil);
+        aLinearShader := nil;
         ALfreeandNil(aColors);
         ALfreeandNil(aStops);
       end;
@@ -4959,7 +5004,8 @@ begin
 
     //fill with gradient
     if Fill.Kind = TBrushKind.Gradient then begin
-      if Fill.Gradient.Style = TGradientStyle.Radial then begin
+      if Fill.Gradient.Style in [TGradientStyle.Radial,
+                                 TGradientStyle.Linear] then begin
         CGContextSaveGState(aContext);
         //-----
         aCallback.version := 0;
@@ -4972,14 +5018,26 @@ begin
                                   nil, // range - An array of (2*rangeDimension) floats that specifies the valid intervals of output values
                                   @aCallback); // callbacks - A pointer to a callback function table.
         try
-          aShading := CGShadingCreateRadial(aColorSpace, // colorspace
-                                            CGPoint.Create(TPointF.Create(aRect.Width / 2, aRect.height / 2)), // start - The center of the starting circle, in the shading's target coordinate space.
-                                            aRect.Width / 2, // startRadius - The radius of the starting circle, in the shading's target coordinate space.
-                                            CGPoint.Create(TPointF.Create(aRect.Width / 2, aRect.Height / 2)), // end - The center of the ending circle, in the shading's target coordinate space.
-                                            0, // endRadius - The radius of the ending circle, in the shading's target coordinate space.
-                                            aFunc, // function
-                                            1, // extendStart - A Boolean value that specifies whether to extend the shading beyond the starting circle.
-                                            1); // extendEnd - A Boolean value that specifies whether to extend the shading beyond the ending circle.
+          if Fill.Gradient.Style = TGradientStyle.Radial then begin
+            aShading := CGShadingCreateRadial(aColorSpace, // colorspace
+                                              CGPoint.Create(TPointF.Create(aRect.Width / 2, aGridHeight - (aRect.height / 2))), // start - The center of the starting circle, in the shading's target coordinate space.
+                                              aRect.Width / 2, // startRadius - The radius of the starting circle, in the shading's target coordinate space.
+                                              CGPoint.Create(TPointF.Create(aRect.Width / 2, aGridHeight - (aRect.Height / 2))), // end - The center of the ending circle, in the shading's target coordinate space.
+                                              0, // endRadius - The radius of the ending circle, in the shading's target coordinate space.
+                                              aFunc, // function
+                                              1, // extendStart - A Boolean value that specifies whether to extend the shading beyond the starting circle.
+                                              1); // extendEnd - A Boolean value that specifies whether to extend the shading beyond the ending circle.
+          end
+          else begin
+            aShading := CGShadingCreateAxial(aColorSpace, // colorspace
+                                             CGPointMake(aRect.Left + (Fill.Gradient.StartPosition.X * aRect.Width),
+                                                         aGridHeight - aRect.top - (Fill.Gradient.StartPosition.Y * aRect.Height)), // start - The starting point of the axis, in the shading's target coordinate space.
+                                             CGPointMake(aRect.Left + (Fill.Gradient.StopPosition.X * aRect.Width),
+                                                         aGridHeight - aRect.top - (Fill.Gradient.StopPosition.Y * aRect.Height)), // end - The ending point of the axis, in the shading's target coordinate space.
+                                             aFunc, // function
+                                             1, // extendStart - A Boolean value that specifies whether to extend the shading beyond the starting point of the axis.
+                                             1); // extendEnd - A Boolean value that specifies whether to extend the shading beyond the ending point of the axis.
+          end;
           try
             _DrawPath(aRect, false{aDrawOnlyBorder});
             CGContextClip(aContext); // Modifies the current clipping path, using the nonzero winding number rule.

@@ -20,7 +20,8 @@ uses System.Classes,
 
 type
 
-  {************************}
+  {*************************}
+  [ComponentPlatforms($FFFF)]
   TALLayout = class(TLayout)
   protected
     procedure DoRealign; override;
@@ -169,7 +170,8 @@ type
     property OnAniStop: TnotifyEvent read fOnAniStop write fOnAniStop;
   end;
 
-  {**************************************}
+  {*************************}
+  [ComponentPlatforms($FFFF)]
   TALScrollBox = class(TALCustomScrollBox)
   protected
     procedure Paint; override;
@@ -235,7 +237,8 @@ type
     property OnAniStop;
   end;
 
-  {******************************************}
+  {*************************}
+  [ComponentPlatforms($FFFF)]
   TALVertScrollBox = class(TALCustomScrollBox)
   protected
     function CalcContentBounds: TRectF; override;
@@ -303,7 +306,8 @@ type
     property OnAniStop;
   end;
 
-  {******************************************}
+  {*************************}
+  [ComponentPlatforms($FFFF)]
   TALHorzScrollBox = class(TALCustomScrollBox)
   protected
     function CalcContentBounds: TRectF; override;
@@ -393,7 +397,7 @@ uses System.SysUtils,
 // http://stackoverflow.com/questions/39317984/does-the-delphi-firemonkey-dorealign-implemented-correctly
 // https://quality.embarcadero.com/browse/RSP-15768
 // often we assign some event to some control onresize (like TText with autosize=True) to
-// resize their parentcontrols to the same size as them. But in this way the problem is that if 
+// resize their parentcontrols to the same size as them. But in this way the problem is that if
 // we resize the parentcontrol during it's dorealign process then it will not call again dorealign
 procedure TALLayout.DoRealign;
 var aOriginalSize: TpointF;
